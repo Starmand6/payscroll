@@ -6,8 +6,6 @@ artifacts
 cache
 deployments
 node_modules
-not_used
-oldprojects
 coverage
 coverage.json
 typechain
@@ -106,6 +104,7 @@ gas-report.txt
 ADboilerplates.js
 contracts/test/fuzzing/crytic-export
 not_used
+scripts
 .prettierignore
 .prettierrc
 front-end
