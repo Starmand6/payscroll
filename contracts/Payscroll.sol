@@ -3,64 +3,74 @@ pragma solidity ^0.8.6;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "hardhat/console.sol";
 
+/// @title Wizard Payscroll
+/// @author Armand Daigle
+/// @notice This contract keeps track of an event/production organization
+/// by recording payment transactions and employees on the blockchain.
+/// @dev Inherits OpenZeppelin ownable and AggregatorV3 interface contracts.
+/// @custom:portfolio This contract is purely for portfolio purposes.
 contract Payscroll is Ownable {
-    // Employee data struct:
-    // If employee never works or dies, their entry will still exist forever.
-    // If so, onCurrentProject will never be set to true.
-    // This way, employees have same unique ID forever.
+    /**
+     * @dev Employee data struct: Employees are named wizards. If a wizard never works
+     * or dies, their entry will still exist forever. This way, employees have same
+     * unique ID forever. Wizard.onCurrentProject would just never be set to true.
+     */
     struct Wizard {
         string name;
         address payable wallet;
-        bytes32 title;
-        uint32 dayRate;
+        string title;
+        uint256 dayRate;
         bool onProductionCrew;
         bool hasBeenPaid;
     }
 
-    // All crew members registered in organization
+    /// The wizards array contains all crew members (and their
+    /// associated profiles) that have registered with the organization
     Wizard[] public wizards;
 
-    // Variables
-    //uint256 public wizardID;
-    uint256 public productionContractTotal;
-    uint16 public productionDays;
-    AggregatorV3Interface internal s_usdcPerETHPriceFeed;
-
-    // Mappings
-    // Employee ID to Employee Struct (Information)
-    mapping(uint32 => Wizard) public wizardIDToData;
-    mapping(address => Wizard) public walletToData;
-    mapping(uint32 => address) public wizardIDToWallet;
-
-    // Events
-    event ANewWizardHasEnteredTheChat(uint32 wizardID, string name);
-    event ProductionHasKickedOff();
-    event ProductionCrewIsSet(uint32[] wizardsOnProduction);
-    event WizardsPaymentProcessing();
-    event PaymentsCanBeWithdrawn();
-    event ProductionHasClosedOut();
-    event NewPayscrollManagerAssigned(address payable newPayscrollManager);
-
-    // Errors
-    // error WizardAlreadyExists(uint256 wizardID, string name);
-    error FunctionUnavailableAtThisProductionStatus();
-    error PaymentIsLessThanContractTotal(uint256 valueSent, uint256 productionContractTotal);
-    error WizardHasAlreadyBeenPaid();
-    error NotAuthorizedToWithdrawPayment();
-    error InsufficientFunds(uint256 amountOwed, uint256 amountAvailable);
-    error WizardIsNotOnProductionCrew();
-
-    // Enum for production status
     enum Production {
         HasKickedOff,
         CrewIsSet,
+        ContractPaymentReceived,
         PaymentsAreAvailable,
         PaymentsAreAllWithdrawn,
         HasClosedOut
     }
 
+    /// status keeps track of which stage the production is at.
     Production public status;
+
+    /// These two public variables are used to define each production.
+    uint256 public productionContractTotal;
+    uint16 public productionDays;
+
+    /// @dev Chainlink oracle price feed variable
+    AggregatorV3Interface internal s_usdcPerETHPriceFeed;
+
+    /// Mappings to access wizard data
+    mapping(uint32 => Wizard) public wizardIDToData;
+    mapping(address => Wizard) public walletToData;
+    mapping(uint32 => address) public wizardIDToWallet;
+
+    /// Events
+    event ANewWizardHasEnteredTheChat(uint32 wizardID, string name);
+    event ProductionHasKickedOff();
+    event ProductionCrewIsSet(uint32[] wizardsOnProduction);
+    event WizardsPaymentProcessing();
+    event PaymentsCanBeWithdrawn();
+    event AllWizardsHaveBeenPaid();
+    event ProductionHasClosedOut();
+
+    /// Errors
+    error FunctionUnavailableAtThisProductionStatus();
+    error CrewMustMatchContractTotal();
+    error PaymentMustEqualContractTotal(uint256 valueSent, uint256 productionContractTotal);
+    error WizardHasAlreadyBeenPaid();
+    error NotAuthorizedToWithdrawPayment();
+    error InsufficientFunds(uint256 amountOwed, uint256 amountAvailable);
+    error WizardIsNotOnProductionCrew();
 
     modifier onlyWhen(Production _status) {
         if (status != _status) {
@@ -69,24 +79,29 @@ contract Payscroll is Ownable {
         _;
     }
 
-    constructor(
-        address usdcPerETHPriceFeedAddress // Polygon Mumbai Testnet ETH/USD Price Feed: 0x0715A7794a1dc8e42615F059dD6e406A6594651A
-    ) {
+    /// @notice Production status starts fresh (HasClosedOut) at deployment.
+    /// @dev Contract will be deployed on Polygon Mumbai Testnet. Chain Link
+    /// Mumbai USDC/ETH price feed address: "0x572dDec9087154dC5dfBB1546Bb62713147e0Ab0".
+    constructor(address usdcPerETHPriceFeedAddress) {
         s_usdcPerETHPriceFeed = AggregatorV3Interface(usdcPerETHPriceFeedAddress);
+        status = Production.HasClosedOut;
     }
 
     receive() external payable {}
 
     fallback() external payable {}
 
-    // To keep this simple as a portfolio project, the Payscroll Manager can only add new employees
-    // in between productions. Obviously, this has undesirable limitations and the contract would
-    // not have this restraint on it in a production environment.
+    /**
+     * For this portfolio project, the Payscroll Manager can only add new employees
+     * in between productions. Obviously, this has undesirable limitations and
+     * would not be a restraint in a production environment. In said setting, this
+     * contract would also have a function to modify the wizard data.
+     */
     function addNewWizard(
-        string memory _name,
+        string calldata _name,
         address payable _wallet,
-        bytes32 _title,
-        uint32 _dayRate,
+        string calldata _title,
+        uint256 _dayRate,
         bool _onProductionCrew,
         bool _hasBeenPaid
     ) external onlyOwner onlyWhen(Production.HasClosedOut) {
@@ -98,7 +113,8 @@ contract Payscroll is Ownable {
             wizardID = 0;
         } else {
             // If there is one wizard, getWizardsCount() function returns one, so
-            // newest wizard ID would be #1, since very first wizard ID# is zero.
+            // newest wizard ID would be one, since very first wizard ID# is zero.
+            // The last entered wizard will always have a wizardID one less than the wizard count.
             wizardID = getWizardCount();
         }
         wizards.push(Wizard(_name, _wallet, _title, _dayRate, _onProductionCrew, _hasBeenPaid));
@@ -122,58 +138,76 @@ contract Payscroll is Ownable {
         emit ANewWizardHasEnteredTheChat(wizardID, wizardIDToData[wizardID].name);
     }
 
-    // In production, this contract would have a function to modify the wizard data.
-
-    // External party paying for production will see production total in app.
-    function kickOffProduction(uint256 _productionContractTotal, uint16 _productionDays)
-        external
-        onlyOwner
-        onlyWhen(Production.HasClosedOut)
-    {
+    /// External party paying for production will see production total in app/portal.
+    function kickOffProduction(
+        uint256 _productionContractTotal,
+        uint16 _productionDays
+    ) external onlyOwner onlyWhen(Production.HasClosedOut) {
         status = Production.HasKickedOff;
         productionContractTotal = _productionContractTotal;
         productionDays = _productionDays;
         emit ProductionHasKickedOff();
     }
 
-    function setProductionCrew(uint32[] calldata wizardsOnProductionCrew)
-        external
-        onlyOwner
-        onlyWhen(Production.HasKickedOff)
-    {
+    /// @dev This function forces the Payscroll Manager to pick a crew whose combined
+    /// dayRates over the # of days match the contract total. This should catch most
+    /// of the accidental human oversights, but of course not all. In production, this
+    /// contract would have a function that could override production crews, if a wizard
+    /// becomes sick, has a conflict, etc.
+    function setProductionCrew(
+        uint32[] calldata wizardsOnProductionCrew
+    ) external onlyOwner onlyWhen(Production.HasKickedOff) {
+        uint256 totalDayRate;
+        uint256 totalCrewCost;
         // Owner enters ids of crew and for loop changes all
         // onProductionCrew bools to true.
-        for (uint32 i = 0; i < wizardsOnProductionCrew.length; i++) {
+        uint32 i = 0;
+        for (; i < wizardsOnProductionCrew.length; i++) {
             uint32 wizID = wizardsOnProductionCrew[i];
             wizardIDToData[wizID].onProductionCrew = true;
+            totalDayRate += wizardIDToData[wizID].dayRate;
+        }
+        totalCrewCost = totalDayRate * productionDays;
+        if (totalCrewCost != productionContractTotal) {
+            revert CrewMustMatchContractTotal();
         }
         status = Production.CrewIsSet;
         emit ProductionCrewIsSet(wizardsOnProductionCrew);
     }
 
-    // Can do a ton of things here, but for this portfolio version, I left it fairly unrestricted
-    // and there is one last check in the paymentVerified() call by the Payscroll Manager.
-    function payWizards() external payable {
-        if (msg.value < productionContractTotal) {
-            revert PaymentIsLessThanContractTotal(msg.value, productionContractTotal);
+    /// Can do a ton of things here, but for this portfolio version, the payment
+    /// must exactly equal the contract total for the transaction to complete.
+    function payWizards() external payable onlyWhen(Production.CrewIsSet) {
+        if (msg.value != productionContractTotal) {
+            revert PaymentMustEqualContractTotal(msg.value, productionContractTotal);
         }
+        status = Production.ContractPaymentReceived;
         emit WizardsPaymentProcessing();
     }
 
-    // This is mostly a sanity check. Payscroll Manager can call getContractBalance(), and if the
-    // 3rd party paid too much or some other unforeseen issue occurs, Manager can at least have this
-    // breather in the process to figure out what is wrong and solve problems.
-    function paymentVerified() external onlyOwner onlyWhen(Production.CrewIsSet) {
+    /**
+     * This is mostly a sanity check. Payscroll Manager can call getContractBalance(),
+     * and if the project or crew was set wrong or some unforeseen issue occurs,
+     * Manager can at least have this breather in the process to figure out what is wrong
+     * and solve problems. At the very least, it keeps them engaged.
+     */
+    function paymentVerified() external onlyOwner onlyWhen(Production.ContractPaymentReceived) {
         status = Production.PaymentsAreAvailable;
         emit PaymentsCanBeWithdrawn();
     }
 
-    /** Function contains five verifications: 1. Production is at PaymentsAreAvailable stage.
-     *  2. Wizard can only be paid once per production.
-     *  3. Wizard must know their ID and have their authorized wallet connected.
-     *  4. Wizard is on the current production's crew.
-     *  5. Payscroll contract must have enough funds. */
-    function withdrawPayment(uint32 wizID) external onlyWhen(Production.PaymentsAreAvailable) {
+    /**
+     * @notice Function contains several verifications:
+     * 1. Production is at PaymentsAreAvailable stage.
+     * 2. Wizard can only be paid once per production.
+     * 3. Wizard must both know their ID and have their authorized wallet connected.
+     * 4. Wizard is on the current production's crew.
+     * 5. Payscroll contract must have enough funds.
+     * @return wizard sees payment total in both USD and ETH.
+     */
+    function withdrawPayment(
+        uint32 wizID
+    ) external onlyWhen(Production.PaymentsAreAvailable) returns (uint256, uint256) {
         if (walletToData[msg.sender].hasBeenPaid == true) {
             revert WizardHasAlreadyBeenPaid();
         }
@@ -184,24 +218,38 @@ contract Payscroll is Ownable {
             revert WizardIsNotOnProductionCrew();
         }
 
-        // Note: Amount owed is auto-calculated, removing opportunity for human error/mischeif.
+        // Amount owed is auto-calculated, removing opportunity for human error/mischeif.
         uint256 wizDayRate = walletToData[msg.sender].dayRate;
-        uint256 amount = productionDays * wizDayRate;
+        uint256 ethAmount = productionDays * wizDayRate;
         uint256 contractBalance = address(this).balance;
-        if (amount > contractBalance) {
-            revert InsufficientFunds(amount, contractBalance);
+        contractBalance -= ethAmount;
+
+        // Two checks to hopefully avoid re-entrancy attacks: 1. Changing state variables
+        // first before external call. 2. Using a hasBeenPaid "lock" on the function.
+        walletToData[msg.sender].hasBeenPaid = true;
+        wizardIDToData[wizID].hasBeenPaid = true;
+        (bool success, ) = payable(msg.sender).call{value: ethAmount}("");
+        if (!success) {
+            walletToData[msg.sender].hasBeenPaid = false;
+            wizardIDToData[wizID].hasBeenPaid = false;
         }
-        contractBalance -= amount;
-        (bool success, ) = payable(msg.sender).call{value: amount}("");
         require(success, "Payment withdrawal failed.");
-        if (success) {
-            walletToData[msg.sender].hasBeenPaid = true;
+
+        // contractBalance of 0 should mean that all wizards on crew withdrew.
+        if (contractBalance == 0) {
+            status = Production.PaymentsAreAllWithdrawn;
         }
+        emit AllWizardsHaveBeenPaid();
+
+        (, int256 _usdcPerETHPrice, , , ) = s_usdcPerETHPriceFeed.latestRoundData();
+        uint256 usdcPerETHPrice = uint(_usdcPerETHPrice);
+        uint256 usdAmount = ethAmount * usdcPerETHPrice;
+        return (usdAmount, ethAmount);
     }
 
-    // Owner (or Payroll Manager or Production Manager) Functions
+    /// Owner (or Payroll Manager or Production Manager) Functions
 
-    // Resets all wizard booleans to enable clean slate kickoff of next production.
+    /// Resets all wizard booleans to enable clean slate kickoff of next production.
     function closeOutProduction() external onlyOwner onlyWhen(Production.PaymentsAreAllWithdrawn) {
         status = Production.HasClosedOut;
         for (uint32 i = 0; i < wizards.length; i++) {
@@ -211,16 +259,10 @@ contract Payscroll is Ownable {
         emit ProductionHasClosedOut();
     }
 
-    // assign a new Payroll Manager function. Can be called at any time.
-    function assignPayscrollManager(address payable _newPayscrollManager) external onlyOwner {
-        transferOwnership(_newPayscrollManager);
-        emit NewPayscrollManagerAssigned(_newPayscrollManager);
-    }
+    /// Getters
 
-    // Getters
-
-    // Wizards can use this function to verify their data, including if they
-    // are on the crew payroll of the current production. They can also get others' data.
+    /// Wizards can use this function to verify their data, including if they
+    /// are on the crew payroll of the current production. They can also get others' data.
     function getWizardData(uint32 wizID) external view returns (Wizard memory) {
         return wizardIDToData[wizID];
     }
@@ -230,8 +272,10 @@ contract Payscroll is Ownable {
     }
 
     function getProductionStatus() external view returns (string memory statusText) {
-        if (status == Production.HasKickedOff) return "Production has Kicked Off.";
+        if (status == Production.HasKickedOff) return "Production has kicked off.";
         if (status == Production.CrewIsSet) return "Production crew is set.";
+        if (status == Production.ContractPaymentReceived)
+            return "Contract payment has been received.";
         if (status == Production.PaymentsAreAvailable) return "Production payments are available.";
         if (status == Production.PaymentsAreAllWithdrawn)
             return "Production payments are all withdrawn.";
@@ -247,9 +291,7 @@ contract Payscroll is Ownable {
         return wizardCount;
     }
 
-    // This could be made public, but Solidity gives error saying that return parameters
-    // with nested mappings can only be set to storage. Would figure this out in production.
-    function getAllWizards() private view returns (mapping(uint32 => Wizard) storage) {
-        return wizardIDToData;
+    function getAllWizards() public view returns (Wizard[] memory) {
+        return wizards;
     }
 }

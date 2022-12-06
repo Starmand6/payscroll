@@ -12,6 +12,7 @@ coverage
 coverage.json
 typechain
 
+
 # don't push the environment vars!
 .env
 
@@ -100,6 +101,13 @@ lint/outputs/
 lint/tmp/
 # lint/reports/
 
+# Other
 gas-report.txt
 ADboilerplates.js
 contracts/test/fuzzing/crytic-export
+not_used
+.prettierignore
+.prettierrc
+front-end
+solhint.json
+.solhintignore

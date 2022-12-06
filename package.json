@@ -4,7 +4,11 @@
   "description": "An Event Crew Payscroll on the Blockchain",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test-staging": "hardhat test test/staging/Payscroll.staging.test.js --network polygonMumbai",
+    "deploy-testnet": "hardhat deploy --network polygonMumbai",
+    "test-unit": "hardhat test test/unit/Payscroll.unit.test.js",
+    "format": "npx prettier --write ."
   },
   "author": "",
   "license": "ISC",
