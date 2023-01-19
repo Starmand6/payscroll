@@ -7,7 +7,7 @@
     <li><a href="#about-the-project">About The Project</a></li>
     <li><a href="#development-stack-and-plugins">Development Stack and Plugins</a></li>
     <li><a href="#cli-and-interaction-steps">CLI and Interaction Steps</a></li>
-    <li><a href="#usage">Usage</a></li>
+    <li><a href="#usage">Usage Notes</a></li>
     <li><a href="#future-considerations">Future Considerations</a></li>
     <li><a href="#lessons-learned">Lessons Learnedd</a></li>
     <li><a href="#contributing">Contributing</a></li>
@@ -21,18 +21,21 @@
 
 ## About The Project
 
-Automated payroll ("payscroll" because I'm a principled fantasy nerd) application using smart contracts to record payment transactions on the blockchain. This specific payroll setup is for an organization that gets paid in lump sums for project or event work. 
+Automated payroll ("payscroll" because I'm a principled fantasy nerd) application using smart contracts to record payment transactions on the blockchain. This specific payroll setup is for an organization that gets paid in lump sums for project or event work. The `onlyOwner` modifiers have been commented out to enable anyone to call functions on the contract. In production, the Payroll Manager is the user in charge of all functionality aside from the payment and withdrawal functions.
 
-Roles: 
+Contract Address on Polygon Mumbai Testnet: `0x7937c01F0Bde6a1F428554DF5cc593a8320DDc9f`
+[Payscroll Contract Page on Polygonscan](https://mumbai.polygonscan.com/address/0x7937c01F0Bde6a1F428554DF5cc593a8320DDc9f#code)
+
+<u>Roles</u>
 
 - Owner (Payroll Manager / Production Manager)
 - External Party (Payer of services)
 - Employees (Wizards)
 
-Functionality:
+<u>Functionality</u>
 
 - Owner / Payroll Manager:
-    - `addNewEmployee`: Populates payroll. Wizard entries include:
+    - `addNewEmployee()`: Populates payroll. Wizard entries include:
         ```sol
         struct Wizard {
         string name;
@@ -41,32 +44,38 @@ Functionality:
         uint256 dayRate;
         bool onProductionCrew;
         bool hasBeenPaid;
+        }
         ```
-    - `kickOffProduction`: Manager defines each production by `productionContractTotal` and `productionDays` 
-    - `setProductionCrew`: Manager sets which wizards are on the current production. Wizards can only be paid if they are on the current crew. Can be different for each event/project. 
-    - `paymentVerified`: A quality control checkpoint. Project cannot move to the payment withdrawal stage until Manager verifies the production payment has been made correctly.
-    - `closeOutProduction`: After all wizards have withdrawn, the owner is able to call this function, which resets the wizards struct booleans (`onProductionCrew` and `hasBeenPaid`) to false, effectively closing out the production. Only after a production is closed out, can a new production be kicked off and new production crew be set.
-- External Party function: Once a production has kicked off and production crew is set, the external party can `payWizards` for their services. Payment must exactly match the `productionContractTotal`, or the function will revert.
-- Employee function: `withdrawPayment` has several qualifiers (must be at correct production status, registered wallet must match registered ID, must be on production crew, can only withdraw once). Once all qualifiers are met, the wizard can withdraw their precalculated payment (based on their `dayRate` multiplied by `productionDays`).
-- Public getter functions: 
-    - `getWizardData` gets any wizards current data by inputting the wizard ID. 
-    - `getContractBalance` gets current contract balance
-    - `getProductionStatus` gets current production status
-    - `getPriceFeed` gets current Chainlink price feed address
-    - `getWizardCount` gets the total count of all wizards on the payscroll (this includes both wizards on and off the current production, if there is one) 
-    - `getAllWizards` gets an array of all the wizard profiles
+    - `kickOffProduction()`: Manager defines each production by `productionContractTotal` and `productionDays` 
+    - `setProductionCrew()`: Manager sets which wizards are on the current production. Wizards can only be paid if they are on the current crew. Can be different for each event/project. 
+    - `paymentVerified()`: This is a quality control placeholder checkpoint. Project cannot move to the payment withdrawal stage until Manager verifies the production payment has been made correctly and/or can trigger any other logic placed here.
+    - `closeOutProduction()`: After all wizards have withdrawn, the owner is able to call this function, which resets the Wizard struct booleans (`onProductionCrew` and `hasBeenPaid`) to false for all wizards, effectively closing out the production. Only after a production is closed out can a new production be kicked off and new production crew be set.
+    - `weAllGoBackToZero()`: (Testnet build only) Added this function after first testnet deployment lessons to ensure dApp never gets stuck. This function would not be in a production build or would be highly altered and controlled by a multisig or similar. 
+    - `setContractTotalMax()`: (Testnet build only) Added this function aftet first testnet deployment lessons to minimize stuckness frequency. See Usage Notes for more info.
+- External Parties: 
+    - `payWizards()`: Once a production has kicked off and production crew is set, the external party can pay the wizards for their services. Payment must exactly match the `productionContractTotal`, or the function will revert.
+- Employees/Wizards: 
+    - `withdrawPayment()` has several qualifiers (must be at correct production status, registered wallet must match registered ID, must be on production crew, can only withdraw once). Once all qualifiers are met, the wizard can withdraw their precalculated payment (based on their `dayRate` multiplied by `productionDays`).
+- Public getters: 
+    - `getWizardData()` gets any wizards current data by inputting the wizard ID. 
+    - `getContractBalance()` gets current contract balance
+    - `getProductionStatus()` gets current production status
+    - `getPriceFeed()` gets current Chainlink price feed address
+    - `getWizardCount()` gets the total count of all wizards on the payscroll (this includes both wizards on and off the current production, if there is one) 
+    - `getAllWizards()` gets an array of all the wizard profiles
 
-Project Highlights:
+<u>Project Highlights</u>
 
 - Struct and Enum use
 - Chainlink Price Feed integration
 - Deployed to Polygon Mumbai Testnet
 - Verified on PolygonScan 
+- Live Front End hosted on Fleek.co
 
-Technical Highlights:
+<u>Technical Highlights</u>
 
-- 32 checks passing for unit tests.
-- Hardhat network test coverage: 100% Stmts, 92.86% Branch, 93.75% Funcs, 97.47% Lines
+- 36 unit tests passing.
+- Hardhat network test coverage: 100% Stmts, 84.62% Branch, 88.89% Funcs, 95.88% Lines
 
 <!-- GETTING STARTED -->
 
@@ -79,13 +88,13 @@ Technical Highlights:
 -   Hardhat (local Eth environment for testing, debugging, compiling, and deploying contracts)
 -   Hardhat ethers.js plugin (for interacting with the Ethereum blockchain)
 -   Hardhat local node and console (to interact with contracts)
--   Mocha, Chai, Waffle, and Chai Helpers (for testing)
+-   Mocha, Chai, Waffle, and Chai Matchers (for testing)
 -   Alchemy to connect to Polygon Mumbai testnet (Alchemy is a platform that generates APIs and offers scure connections to the Blockchain)
 
 ## CLI and Interaction Steps
 
 0. For quickstart, clone the repo
-    ```sh
+    ```
     git clone https://github.com/Starmand6/payscroll.git
     ```
 1. Install Node Version Manager (nvm), Node.js, and Node Package Manger (npm)
@@ -93,13 +102,13 @@ Technical Highlights:
     - nvm: https://github.com/nvm-sh/nvm
       (`nvm install node` installs latest vesion of Node.js.)
     - npm:
-        ```sh
+        ```
         npm install npm@latest -g
         ```
 
 2. Initialize and Setup Project
 
-    ```sh
+    ```
     mkdir payscroll 
     cd payscroll
     npm init
@@ -126,7 +135,7 @@ Technical Highlights:
     - Interact with contracts with Hardhat console
     - Test with Chai, Mocha, Waffle, Ethers, and Hardhat plugins
 
-    ```sh
+    ```
     npx hardhat compile
     npx hardhat node
     npx hardhat run --network localhost scripts/deploy.js
@@ -182,7 +191,7 @@ Technical Highlights:
     - Fill an account with Polygon Mumbai Testnet MATIC:
         - Use your developlment MetaMask wallet to get Testnet MATIC from https://polygon.faucet.technology
     - Deploy to Polygon Mumbai Testnet (access testnet node via Alchemy):
-        ```sh
+        ```
         npx hardhat compile
         npx hardhat node
         npx hardhat run --network polygonMumbai scripts/deploy.js
@@ -192,7 +201,9 @@ Technical Highlights:
 
 ## Usage Notes
 
-All payments are denominated in Ether.
+Since the contract is deployed to the Polygon Mumbai Testnet, all payments are in MATIC. For testing/portfolio purposes, I have updated `productionContractTotal` to have a maximum value of 1 MATIC. Since this is on a testnet, and the Mumbai testnet faucet currently only gives me 2 MATIC per day, in case a tester runs out of MATIC in the middle of a "production," I need to be able to bail the contract out with MATIC, so that it gets unstuck. I highly recommend and encourage keeping the productionContractTotal below whatever amount of MATIC you have, so that you can pay the amount back and get it unstuck. This also means that all wizard day rates need to be under 1 MATIC (use less than 18 digits) to enable interaction with all functions throughout a production's life cycle.
+
+For easy testing, I recommend adding a wallet you control to the payscroll with a day rate of 0.1 MATIC, and kicking off a production of 1 day for 0.1 MATIC, just so you can walk through all the functions easily.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -201,7 +212,7 @@ All payments are denominated in Ether.
 ## Future Considerations
 
 - Add upgradeability to smart contract.
-- Proof of humanity / decentralized ID integrations.
+- Proof of Humanity / decentralized ID integrations.
 - Implement decentralization (change single owner to multisig, etc) and further autonomy. 
 - Add multiple project and crew capability. Would need to utilize a projectID, add a mapping of projects to Enums, etc.
 - Add functions to give to a bonus pool and reward bonuses to wizards.
@@ -217,9 +228,9 @@ All payments are denominated in Ether.
 
 ## Lessons Learned
 
-- Permanent wizard IDs proved to make iterative testnet testing rather difficult, since partially run tests during debugging led to duplicate wizards being added and the production status being advanced. Future versions would need to give owner ability to clear wizards array and reset production, or the staging tests would need to be broken up and be more agile and more forgiving for human error.   
-- Use a MUCH lower amount of Eth/Matic for the productionContractTotal. I wrote all my tests and deployed to Mumbai before even thinking that I wouldn't have 15 testnet Ether to use to satisfy the conditions and advance through the staging test. Overzealous!
-- Make a simpler, more flexible App for my next portfolio project!
+- Permanent wizard IDs proved to make iterative testnet testing rather difficult, since partially run tests during debugging led to duplicate wizards being added and the production status being advanced. Future versions would need to give owner ability to clear wizards array, or the staging tests would need to be broken up and be more agile and more forgiving for human error.   
+- Use a MUCH lower amount of Eth/Matic for the productionContractTotal. I originally wrote all my tests and deployed to Mumbai before even thinking that I wouldn't have 15 testnet ETH or MATIC to use to satisfy the conditions and advance through the staging test. Overzealous!
+- Make a simpler, more flexible dApp for my next portfolio project!
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

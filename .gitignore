@@ -104,7 +104,6 @@ gas-report.txt
 ADboilerplates.js
 contracts/test/fuzzing/crytic-export
 not_used
-scripts
 .prettierignore
 .prettierrc
 front-end

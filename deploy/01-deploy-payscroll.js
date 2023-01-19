@@ -1,13 +1,13 @@
 // const { hre, ethers } = require("hardhat");
 const { networkConfig } = require("../helper-hardhat-config");
-const { network } = require("hardhat");
+const { network, ethers } = require("hardhat");
 const { verify } = require("../utils/verify");
 
 module.exports = async function ({ getNamedAccounts, deployments }) {
     const { deploy, log } = deployments;
     const { deployer } = await getNamedAccounts();
     const chainId = network.config.chainId;
-    let usdcETHPriceFeed = networkConfig[chainId]["usdcETHPriceFeed"];
+    let maticUSDPriceFeed = networkConfig[chainId]["maticUSDPriceFeed"];
     let payscroll;
 
     if (chainId == 31337) {
@@ -28,9 +28,8 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         payscroll = await deploy("Payscroll", {
             from: deployer,
             log: true,
-            args: [usdcETHPriceFeed],
+            args: [maticUSDPriceFeed],
         });
-
         log("Payscroll Deployed!");
         log("-----------------------------------------------------------");
     } else if (chainId == 137) {
@@ -38,16 +37,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         payscroll = await deploy("Payscroll", {
             from: deployer,
             log: true,
-            args: [usdcETHPriceFeed],
-        });
-        log("Payscroll Deployed!");
-        log("-----------------------------------------------------------");
-    } else if (chainId == 4) {
-        log("Connected to Ethereum Goerli Testnet. Deploying Payscroll...");
-        payscroll = await deploy("Payscroll", {
-            from: deployer,
-            log: true,
-            args: [usdcETHPriceFeed],
+            args: [maticUSDPriceFeed],
         });
         log("Payscroll Deployed!");
         log("-----------------------------------------------------------");
@@ -55,7 +45,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
 
     if (chainId != 31337 && process.env.POLYGONSCAN_API_KEY) {
         log("Verifying contract...");
-        await verify(payscroll.address, [usdcETHPriceFeed]);
+        await verify(payscroll.address, [maticUSDPriceFeed]);
     }
 };
 

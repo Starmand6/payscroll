@@ -9,14 +9,14 @@ const networkConfig = {
     80001: {
         name: "polygonMumbai",
         // subscriptionId: "2418", // Mumbai Chainlink ID
-        usdcETHPriceFeed: "0x572dDec9087154dC5dfBB1546Bb62713147e0Ab0",
+        maticUSDPriceFeed: "0xd0D5e3DB44DE05E9F294BB0a3bEEaF030DE24Ada",
         // gasLane: "0x4b09e658ed251bcafeebbc69400383d49f344ace09b9576fe248bb02c003fe9f", // 500 gwei Key Hash
         // callbackGasLimit: "500000", // 500,000 gas
     },
     137: {
         name: "polygonMainnet",
         // subscriptionId: "2418",
-        usdcETHPriceFeed: "0xefb7e6be8356cCc6827799B6A7348eE674A80EaE",
+        maticUSDPriceFeed: "0xAB594600376Ec9fD91F8e885dADF0CE036862dE0",
         // gasLane: "0xcc294a196eeeb44da2888d17c0625cc88d70d9760a69d58d853ba6581a9ab0cd" // 500 gwei Key Hash
         //
         // callbackGasLimit: "500000", // 500,000 gas
@@ -32,7 +32,7 @@ const networkConfig = {
 };
 
 const DECIMALS = "18";
-const INITIAL_PRICE = "200000000000000000000";
+const INITIAL_PRICE = "1000000000000000000";
 const developmentChains = ["hardhat", "localhost"];
 
 module.exports = {
