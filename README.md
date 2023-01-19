@@ -24,6 +24,8 @@
 Automated payroll ("payscroll" because I'm a principled fantasy nerd) application using smart contracts to record payment transactions on the blockchain. This specific payroll setup is for an organization that gets paid in lump sums for project or event work. The `onlyOwner` modifiers have been commented out to enable anyone to call functions on the contract. In production, the Payroll Manager is the user in charge of all functionality aside from the payment and withdrawal functions.
 
 Contract Address on Polygon Mumbai Testnet: `0x7937c01F0Bde6a1F428554DF5cc593a8320DDc9f`
+<p>
+
 [Payscroll Contract Page on Polygonscan](https://mumbai.polygonscan.com/address/0x7937c01F0Bde6a1F428554DF5cc593a8320DDc9f#code)
 
 <u>Roles</u>
@@ -51,13 +53,13 @@ Contract Address on Polygon Mumbai Testnet: `0x7937c01F0Bde6a1F428554DF5cc593a83
     - `paymentVerified()`: This is a quality control placeholder checkpoint. Project cannot move to the payment withdrawal stage until Manager verifies the production payment has been made correctly and/or can trigger any other logic placed here.
     - `closeOutProduction()`: After all wizards have withdrawn, the owner is able to call this function, which resets the Wizard struct booleans (`onProductionCrew` and `hasBeenPaid`) to false for all wizards, effectively closing out the production. Only after a production is closed out can a new production be kicked off and new production crew be set.
     - `weAllGoBackToZero()`: (Testnet build only) Added this function after first testnet deployment lessons to ensure dApp never gets stuck. This function would not be in a production build or would be highly altered and controlled by a multisig or similar. 
-    - `setContractTotalMax()`: (Testnet build only) Added this function aftet first testnet deployment lessons to minimize stuckness frequency. See Usage Notes for more info.
+    - `setContractTotalMax()`: (Testnet build only) Added this function after first testnet deployment lessons to minimize stuckness frequency. See Usage Notes for more info.
 - External Parties: 
     - `payWizards()`: Once a production has kicked off and production crew is set, the external party can pay the wizards for their services. Payment must exactly match the `productionContractTotal`, or the function will revert.
 - Employees/Wizards: 
     - `withdrawPayment()` has several qualifiers (must be at correct production status, registered wallet must match registered ID, must be on production crew, can only withdraw once). Once all qualifiers are met, the wizard can withdraw their precalculated payment (based on their `dayRate` multiplied by `productionDays`).
 - Public getters: 
-    - `getWizardData()` gets any wizards current data by inputting the wizard ID. 
+    - `getWizardData()` gets any wizards current data by inputting the wizard ID
     - `getContractBalance()` gets current contract balance
     - `getProductionStatus()` gets current production status
     - `getPriceFeed()` gets current Chainlink price feed address
@@ -70,7 +72,6 @@ Contract Address on Polygon Mumbai Testnet: `0x7937c01F0Bde6a1F428554DF5cc593a83
 - Chainlink Price Feed integration
 - Deployed to Polygon Mumbai Testnet
 - Verified on PolygonScan 
-- Live Front End hosted on Fleek.co
 
 <u>Technical Highlights</u>
 
@@ -82,7 +83,6 @@ Contract Address on Polygon Mumbai Testnet: `0x7937c01F0Bde6a1F428554DF5cc593a83
 ## Development Stack and Plugins
 
 -   Your favorite Linux distribution and development environment (I currently use Ubuntu and VS Code, respectively)
--   git (code version control)
 -   Nodejs (open-source, cross-platform, back-end JavaScript runtime environment)
 -   npm (open-source, online repository; package manager and CLI utility for interacting with repo)
 -   Hardhat (local Eth environment for testing, debugging, compiling, and deploying contracts)
@@ -201,7 +201,7 @@ Contract Address on Polygon Mumbai Testnet: `0x7937c01F0Bde6a1F428554DF5cc593a83
 
 ## Usage Notes
 
-Since the contract is deployed to the Polygon Mumbai Testnet, all payments are in MATIC. For testing/portfolio purposes, I have updated `productionContractTotal` to have a maximum value of 1 MATIC. Since this is on a testnet, and the Mumbai testnet faucet currently only gives me 2 MATIC per day, in case a tester runs out of MATIC in the middle of a "production," I need to be able to bail the contract out with MATIC, so that it gets unstuck. I highly recommend and encourage keeping the productionContractTotal below whatever amount of MATIC you have, so that you can pay the amount back and get it unstuck. This also means that all wizard day rates need to be under 1 MATIC (use less than 18 digits) to enable interaction with all functions throughout a production's life cycle.
+Since the contract is deployed to the Polygon Mumbai Testnet, all payments are in MATIC. For testing/portfolio purposes, I have updated `productionContractTotal` to have a maximum value of 1 MATIC. Since this is on a testnet, and the Mumbai testnet faucet currently only gives me 2 MATIC per day, in case a tester runs out of MATIC in the middle of a "production," I need to be able to bail the contract out with MATIC, so that it gets unstuck. Keep the productionContractTotal below whatever amount of MATIC you have, so that you can pay the amount back and get it unstuck. This also means that all wizard day rates need to be under 1 MATIC (use less than 18 digits) to enable interaction with all functions throughout a production's life cycle.
 
 For easy testing, I recommend adding a wallet you control to the payscroll with a day rate of 0.1 MATIC, and kicking off a production of 1 day for 0.1 MATIC, just so you can walk through all the functions easily.
 

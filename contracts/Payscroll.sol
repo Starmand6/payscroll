@@ -67,7 +67,7 @@ contract Payscroll is Ownable {
 
     /// Errors
     error FunctionUnavailableAtThisProductionStatus();
-    error TotalMustUnderContractMax();
+    error TotalMustBeUnderContractMax();
     error CrewMustMatchContractTotal();
     error PaymentMustEqualContractTotal(uint256 valueSent, uint256 productionContractTotal);
     error WizardHasAlreadyBeenPaid();
@@ -137,7 +137,7 @@ contract Payscroll is Ownable {
         uint16 _productionDays
     ) external /*onlyOwner*/ onlyWhen(Production.HasClosedOut) {
         if (_productionContractTotal > contractTotalMax) {
-            revert TotalMustUnderContractMax();
+            revert TotalMustBeUnderContractMax();
         }
         status = Production.HasKickedOff;
         productionContractTotal = _productionContractTotal;
